@@ -8,11 +8,13 @@ import android.os.Build
 import android.support.v4.content.ContextCompat
 import android.util.AttributeSet
 import android.util.DisplayMetrics
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.RelativeLayout
 import android.widget.TextView
 import kotlinx.android.synthetic.main.layout_round_corner_progress_bar.view.*
 
@@ -25,15 +27,19 @@ class RoundProgressBar @JvmOverloads constructor(
     private var radius: Int = 0
     private var padding: Int = 0
     private var totalWidth: Int = 0
+    private var progressHeight: Int = 0
 
-    private var max: Float = 0.toFloat()
-    private var progress: Float = 0.toFloat()
-    private var secondaryProgress: Float = 0.toFloat()
+    private var max: Int = 0
+    private var progress = 0
 
     private var colorBackground: Int = 0
     private var colorStartProgress: Int = 0
     private var colorMiddleProgress: Int = 0
     private var colorEndProgress: Int = 0
+
+    private var dateOffset: Int = 0
+
+    private var hasLabel: Boolean = false
 
     private var progressChangedListener: OnProgressChangedListener? = null
 
@@ -77,8 +83,15 @@ class RoundProgressBar @JvmOverloads constructor(
             dp2px(DEFAULT_BACKGROUND_PADDING.toFloat())
         ).toInt()
 
-        max = typedArray.getFloat(R.styleable.RoundProgressBar_checkInMaxProgress, DEFAULT_MAX_PROGRESS.toFloat())
-        progress = typedArray.getFloat(R.styleable.RoundProgressBar_checkInProgress, DEFAULT_PROGRESS.toFloat())
+        hasLabel = typedArray.getBoolean(R.styleable.RoundProgressBar_hasLabel, false)
+
+        max = typedArray.getInt(
+            R.styleable.RoundProgressBar_checkInMaxProgress,
+            DEFAULT_MAX_PROGRESS
+        ) + if (hasLabel) 1 else 0
+        progress =
+            typedArray.getInt(R.styleable.RoundProgressBar_checkInProgress, DEFAULT_PROGRESS) + if (hasLabel) 1 else 0
+        dateOffset = typedArray.getInt(R.styleable.RoundProgressBar_dateOffset, DEFAULT_DATE_OFFSET)
 
         val colorBackgroundDefault = ContextCompat.getColor(context, R.color.progress_bar_background_default)
         colorBackground =
@@ -105,31 +118,22 @@ class RoundProgressBar @JvmOverloads constructor(
         super.onSizeChanged(newWidth, newHeight, oldWidth, oldHeight)
         if (!isInEditMode) {
             totalWidth = newWidth
+            progressHeight = (newHeight / 3.0f).toInt()
+            removeAll()
             drawAll()
             postDelayed({
                 drawPrimaryProgress()
-                drawSecondaryProgress()
             }, 5)
         }
-    }
-
-    private fun drawSecondaryProgress() {
-        drawProgress(
-            layoutSecondaryProgress,
-            max,
-            secondaryProgress,
-            totalWidth.toFloat(),
-            radius,
-            padding,
-            colorStartProgress
-        )
     }
 
     private fun drawPrimaryProgress() {
         drawProgress(
             layoutProgress,
-            max, progress,
+            max,
+            progress,
             totalWidth.toFloat(),
+            progressHeight,
             radius,
             padding,
             colorStartProgress
@@ -139,34 +143,102 @@ class RoundProgressBar @JvmOverloads constructor(
     private fun drawAll() {
         drawBackgroundProgress()
         drawPadding()
-        drawProgress(layoutProgress)
-        drawProgress(layoutSecondaryProgress)
         drawPrimaryProgress()
-        drawSecondaryProgress()
+        drawDateProgress()
+        drawMarker()
+        drawPointProgress()
     }
 
-    private fun drawProgress(layoutProgress: LinearLayout) {
-        val progressParams = layoutProgress.layoutParams as RelativeLayout.LayoutParams
-        removeLayoutParamsRule(progressParams)
-        progressParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT)
-        // For support with RTL on API 17 or more
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1)
-            progressParams.addRule(RelativeLayout.ALIGN_PARENT_START)
-        layoutProgress.layoutParams = progressParams
+    private fun removeAll() {
+        badgeLayout.removeAllViews()
+        layoutDate.removeAllViews()
+        pointLayout.removeAllViews()
     }
 
-    // Remove all of relative align rule
-    private fun removeLayoutParamsRule(layoutParams: RelativeLayout.LayoutParams) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            layoutParams.removeRule(RelativeLayout.ALIGN_PARENT_RIGHT)
-            layoutParams.removeRule(RelativeLayout.ALIGN_PARENT_END)
-            layoutParams.removeRule(RelativeLayout.ALIGN_PARENT_LEFT)
-            layoutParams.removeRule(RelativeLayout.ALIGN_PARENT_START)
-        } else {
-            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT, 0)
-            layoutParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT, 0)
+    private fun drawPointProgress() {
+        val params = pointLayout.layoutParams.apply {
+            width = totalWidth
+            height = progressHeight
+        }
+        pointLayout.layoutParams = params
+
+        val texViewWidth = (totalWidth - padding * 2) / max
+        val textViewLayoutParam = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT)
+        textViewLayoutParam.width = texViewWidth
+
+        val max = if (hasLabel) max - 1 else max
+        val currentProgress = if (hasLabel) progress - 1 else progress
+
+        for (i in 1..max step dateOffset) {
+            val pointTextView = TextView(context).apply {
+                text = "+${i * 2}"
+                setTextColor(if (i <= currentProgress) ContextCompat.getColor(context, R.color.orange) else ContextCompat.getColor(context, R.color.gray))
+                gravity = Gravity.CENTER or Gravity.BOTTOM
+                textSize = if (i == currentProgress) 14f else 10f
+                layoutParams = textViewLayoutParam
+            }
+            pointLayout.addView(pointTextView)
         }
     }
+
+    private fun drawMarker() {
+        val params = badgeLayout.layoutParams.apply {
+            height = progressHeight
+        }
+        badgeLayout.layoutParams = params
+        val badgeSize = progressHeight / 3
+        val badge = ImageView(context).apply {
+            layoutParams = LayoutParams(badgeSize, badgeSize).apply {
+                val ratio = max.toFloat() / progress
+                val width = (totalWidth - padding * 2)
+                val texViewWidth = width / max
+
+                leftMargin = (width / ratio).toInt() - texViewWidth / 2 - badgeSize / 2
+            }
+
+            setImageResource(R.drawable.marker_circlular)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+        }
+        badgeLayout.addView(badge)
+    }
+
+    private fun drawDateProgress() {
+
+        val progressParams = layoutDate.layoutParams
+        progressParams.width = totalWidth
+        progressParams.height = progressHeight
+        layoutDate.layoutParams = progressParams
+        layoutDate.bringToFront()
+
+        val texViewWidth = (totalWidth - padding * 2) / max
+        val textViewLayoutParam = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT)
+        textViewLayoutParam.width = texViewWidth
+
+        if (hasLabel) {
+            val labelTextView = TextView(context).apply {
+                layoutParams = textViewLayoutParam
+                text = "NGÀY"
+                setTextColor(Color.WHITE)
+                setPadding(10, 0, 0, 0)
+                gravity = Gravity.CENTER
+                textSize = 10f
+            }
+            layoutDate.addView(labelTextView)
+        }
+        val max = if (hasLabel) max - 1 else max
+        val currentProgress = if (hasLabel) progress - 1 else progress
+        for (i in 1..max step dateOffset) {
+            val dateTextView = TextView(context).apply {
+                text = i.toString()
+                setTextColor(if (i <= currentProgress) Color.WHITE else ContextCompat.getColor(context, R.color.gray))
+                gravity = Gravity.CENTER
+                textSize = 10f
+                layoutParams = textViewLayoutParam
+            }
+            layoutDate.addView(dateTextView)
+        }
+    }
+
 
     private fun drawPadding() {
         layoutBackground.setPadding(padding, padding, padding, padding)
@@ -192,16 +264,26 @@ class RoundProgressBar @JvmOverloads constructor(
         } else {
             layoutBackground.setBackgroundDrawable(gradientDrawable)
         }
+
+        val params = layoutBackground.layoutParams
+        params.height = progressHeight
+        layoutBackground.layoutParams = params
     }
 
 
     // Draw a progress by sub class
     private fun drawProgress(
-        layoutProgress: LinearLayout, max: Float, progress: Float, totalWidth: Float,
-        radius: Int, padding: Int, colorProgress: Int
+        layoutProgress: LinearLayout,
+        max: Int,
+        progress: Int,
+        totalWidth: Float,
+        progressHeight: Int,
+        radius: Int,
+        padding: Int,
+        colorProgress: Int
     ) {
 
-        val colors = intArrayOf(colorStartProgress, colorEndProgress)
+        val colors = intArrayOf(colorStartProgress, colorMiddleProgress, colorEndProgress)
         val gradientDrawable = GradientDrawable()
 
         gradientDrawable.gradientType = GradientDrawable.LINEAR_GRADIENT
@@ -230,16 +312,18 @@ class RoundProgressBar @JvmOverloads constructor(
             layoutProgress.setBackgroundDrawable(gradientDrawable)
         }
 
-        val ratio = max / progress
+        val ratio = max.toFloat() / progress
         val progressWidth = ((totalWidth - padding * 2) / ratio).toInt()
         val progressParams = layoutProgress.layoutParams
         progressParams.width = progressWidth
+        progressParams.height = progressHeight
         layoutProgress.layoutParams = progressParams
     }
 
 
     override fun invalidate() {
         super.invalidate()
+        removeAll()
         drawAll()
     }
 
@@ -258,7 +342,6 @@ class RoundProgressBar @JvmOverloads constructor(
             this.radius = radius
         drawBackgroundProgress()
         drawPrimaryProgress()
-        drawSecondaryProgress()
     }
 
     fun getPadding(): Int {
@@ -270,56 +353,33 @@ class RoundProgressBar @JvmOverloads constructor(
             this.padding = padding
         drawPadding()
         drawPrimaryProgress()
-        drawSecondaryProgress()
     }
 
-    fun getMax(): Float {
-        return max
-    }
+    fun getMax() = max
 
-    fun setMax(max: Float) {
+    fun setMax(max: Int) {
         if (max >= 0)
-            this.max = max
+            this.max = max + if (hasLabel) 1 else 0
         if (this.progress > max)
             this.progress = max
         drawPrimaryProgress()
-        drawSecondaryProgress()
     }
 
     fun getLayoutWidth(): Float {
         return totalWidth.toFloat()
     }
 
-    fun getProgress(): Float {
-        return progress
-    }
+    fun getProgress() = progress
 
-    fun setProgress(progress: Float) {
+    fun setProgress(progress: Int) {
+
         when {
-            progress < 0 -> this.progress = 0f
+            progress < 0 -> this.progress = 0
             progress > max -> this.progress = max
-            else -> this.progress = progress
+            else -> this.progress = progress + if (hasLabel) 1 else 0
         }
         drawPrimaryProgress()
-        progressChangedListener?.onProgressChanged(id, this.progress, true, false)
-    }
-
-    fun getSecondaryProgressWidth(): Float {
-        return if (layoutSecondaryProgress != null) layoutSecondaryProgress.width.toFloat() else 0f
-    }
-
-    fun getSecondaryProgress(): Float {
-        return secondaryProgress
-    }
-
-    fun setSecondaryProgress(secondaryProgress: Float) {
-        when {
-            secondaryProgress < 0 -> this.secondaryProgress = 0f
-            secondaryProgress > max -> this.secondaryProgress = max
-            else -> this.secondaryProgress = secondaryProgress
-        }
-        drawSecondaryProgress()
-        progressChangedListener?.onProgressChanged(id, this.secondaryProgress, false, true)
+        progressChangedListener?.onProgressChanged(id, this.progress, true)
     }
 
     fun getProgressBackgroundColor(): Int {
@@ -340,24 +400,15 @@ class RoundProgressBar @JvmOverloads constructor(
         drawPrimaryProgress()
     }
 
-    fun getSecondaryProgressColor(): Int {
-        return colorMiddleProgress
-    }
-
-    fun setSecondaryProgressColor(colorSecondaryProgress: Int) {
-        this.colorMiddleProgress = colorSecondaryProgress
-        drawSecondaryProgress()
-    }
-
     companion object {
-        const val DEFAULT_MAX_PROGRESS = 100
+        const val DEFAULT_MAX_PROGRESS = 7
         const val DEFAULT_PROGRESS = 0
-        const val DEFAULT_SECONDARY_PROGRESS = 0
-        const val DEFAULT_PROGRESS_RADIUS = 30
+        const val DEFAULT_PROGRESS_RADIUS = 3
         const val DEFAULT_BACKGROUND_PADDING = 0
+        const val DEFAULT_DATE_OFFSET = 1
     }
 
     interface OnProgressChangedListener {
-        fun onProgressChanged(viewId: Int, progress: Float, isPrimaryProgress: Boolean, isSecondaryProgress: Boolean)
+        fun onProgressChanged(viewId: Int, progress: Int, isPrimaryProgress: Boolean)
     }
 }

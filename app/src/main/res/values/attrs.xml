@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="RoundProgressBar">
-        <attr name="checkInMaxProgress" format="float"/>
-        <attr name="checkInProgress" format="float"/>
+        <attr name="checkInMaxProgress" format="integer"/>
+        <attr name="checkInProgress" format="integer"/>
         <attr name="checkInBackgroundColor" format="color"/>
         <attr name="checkInProgressStartColor" format="color"/>
         <attr name="checkInProgressMiddleColor" format="color"/>
         <attr name="checkInProgressEndColor" format="color"/>
         <attr name="radius" format="dimension"/>
         <attr name="backgroundPadding" format="dimension"/>
-
+        <attr name="maxDate" format="integer"/>
+        <attr name="dateOffset" format="integer"/>
+        <attr name="hasLabel" format="boolean"/>
     </declare-styleable>
 </resources>

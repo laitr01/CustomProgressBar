@@ -3,8 +3,11 @@
     <color name="colorPrimary">#008577</color>
     <color name="colorPrimaryDark">#00574B</color>
     <color name="colorAccent">#D81B60</color>
-    <color name="progress_bar_background_default">#bcbcbc</color>
+    <color name="marker_color">#ff392c</color>
+    <color name="progress_bar_background_default">#f7f7f7</color>
     <color name="progress_bar_start_color_default">#fe9900</color>
     <color name="progress_bar_middle_color_default">#fd7f3a</color>
     <color name="progress_bar_end_color_default">#ff392c</color>
+    <color name="orange">#fd7f3a</color>
+    <color name="gray">#85BCBEC0</color>
 </resources>

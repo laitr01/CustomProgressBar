@@ -1,23 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:id="@+id/layoutBackground"
+              android:id="@+id/layoutCheckIn"
+              android:background="@color/colorPrimary"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
-              android:orientation="horizontal">
+              android:orientation="vertical">
+
+    <LinearLayout
+            android:id="@+id/pointLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:orientation="horizontal"/>
+
+    <LinearLayout
+            android:id="@+id/badgeLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"/>
+
 
     <RelativeLayout
-            android:id="@+id/layoutProgressHolder"
+            android:id="@+id/layoutBackground"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="wrap_content">
 
         <LinearLayout
-                android:id="@+id/layoutSecondaryProgress"
+                android:id="@+id/layoutProgress"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="horizontal"/>
 
         <LinearLayout
-                android:id="@+id/layoutProgress"
+                android:id="@+id/layoutDate"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="horizontal"/>
